@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-PandasAI is a wrapper around a LLM to make dataframes conversational
+Misbah is a wrapper around a LLM to make dataframes conversational
 
-This module includes the implementation of basis  PandasAI class with methods to run
+This module includes the implementation of basis  Misbah class with methods to run
 the LLMs models on Pandas dataframes. Following LLMs are implemented so far.
 
 """
@@ -17,14 +17,11 @@ import uuid
 import time
 from contextlib import redirect_stdout
 from typing import List, Optional, Union, Dict, Type
-#import importlib.metadata
-
-# __version__ = importlib.metadata.version(__package__ or __name__)
 import astor
 import pandas as pd
 from .constants import (
     WHITELISTED_BUILTINS,
-    WHITELISTED_LIBRARIES,
+    ALLOWED_PYTHON_LIBRARIES,
 )
 from .exceptions import BadImportError, LLMNotFoundError
 from .helpers._optional import import_dependency
@@ -34,25 +31,22 @@ from .helpers.save_chart import add_save_chart
 from .helpers.shortcuts import Shortcuts
 from .helpers.path import find_closest
 from .llm.base import LLM
-from .llm.langchain import LangchainLLM
 from .middlewares.base import Middleware
 from .middlewares.charts import ChartsMiddleware
 from .prompts.base import Prompt
 from .prompts.correct_error_prompt import CorrectErrorPrompt
-from .prompts.correct_multiples_prompt import CorrectMultipleDataframesErrorPrompt
 from .prompts.generate_python_code import GeneratePythonCodePrompt
 from .prompts.generate_response import GenerateResponsePrompt
-from .prompts.multiple_dataframes import MultipleDataframesPrompt
 from .callbacks.base import BaseCallback
 
 
-class PandasAI(Shortcuts):
+class Misbah(Shortcuts):
     """
-    PandasAI is a wrapper around a LLM to make dataframes conversational.
+    Misbah is a wrapper around a LLM to make dataframes conversational.
 
 
-    This is an entry point of `pandasai` object. This class consists of methods
-    to interface the LLMs with Pandas     dataframes. A pandas dataframe metadata i.e.
+    This is an entry point of `Misbah` object. This class consists of methods
+    to interface the LLMs with Pandas dataframes. A pandas dataframe metadata i.e.
     df.head() and prompt is passed on to chosen LLMs API end point to generate a Python
     code to answer the questions asked. The resultant python code is run on actual data
     and answer is converted into a conversational form.
@@ -134,12 +128,11 @@ class PandasAI(Shortcuts):
         middlewares=None,
         custom_whitelisted_dependencies=None,
         enable_logging=True,
-        non_default_prompts: Optional[Dict[str, Type[Prompt]]] = None,
         callback: Optional[BaseCallback] = None,
     ):
         """
 
-        __init__ method of the Class PandasAI
+        __init__ method of the Class Misbah
 
         Args:
             llm (object): LLMs option to be used for API access. Default is None
@@ -166,9 +159,9 @@ class PandasAI(Shortcuts):
         # https://stackoverflow.com/questions/61226587/pycharm-does-not-recognize-logging-basicconfig-handlers-argument
         if enable_logging:
             try:
-                filaname = find_closest("pandasai.log")
+                filaname = find_closest("Misbah.log")
             except ValueError:
-                filaname = "pandasai.log"
+                filaname = "Misbah.log"
             handlers = [logging.FileHandler(filaname)]
         else:
             handlers = []
@@ -185,7 +178,7 @@ class PandasAI(Shortcuts):
 
         if llm is None:
             raise LLMNotFoundError(
-                "An LLM should be provided to instantiate a PandasAI instance"
+                "An LLM should be provided to instantiate a Misbah instance"
             )
         self._load_llm(llm)
         self._is_conversational_answer = conversational
@@ -195,10 +188,6 @@ class PandasAI(Shortcuts):
         self._save_charts_path = save_charts_path
         self._process_id = str(uuid.uuid4())
         self._logs = []
-
-        self._non_default_prompts = (
-            {} if non_default_prompts is None else non_default_prompts
-        )
 
         self._enable_cache = enable_cache
         if self._enable_cache:
@@ -214,25 +203,12 @@ class PandasAI(Shortcuts):
 
     def _load_llm(self, llm):
         """
-        Check if it is a PandasAI LLM or a Langchain LLM.
-        If it is a Langchain LLM, wrap it in a PandasAI LLM.
-
-        Args:
-            llm (object): LLMs option to be used for API access
-
-        Raises:
-            BadImportError: If the LLM is a Langchain LLM but the langchain package
-            is not installed
+            Load the AI model
         """
-
-        try:
-            llm.is_pandasai_llm()
-        except AttributeError:
-            llm = LangchainLLM(llm)
 
         self._llm = llm
 
-    def conversational_answer(self, question: str, answer: str) -> str:
+    def conversational_answer(self, question: str, answer: str, code: str) -> str:
         """
         Returns the answer in conversational form about the resultant data.
 
@@ -249,9 +225,8 @@ class PandasAI(Shortcuts):
             # if the user has set enforce_privacy to True
             return answer
 
-        default_values = {"question": question, "answer": answer}
+        default_values = {"question": question, "answer": answer, "code": code}
         generate_response_instruction, _ = self._get_prompt(
-            "generate_response",
             default_prompt=GenerateResponsePrompt,
             default_values=default_values,
         )
@@ -260,62 +235,30 @@ class PandasAI(Shortcuts):
 
     def _get_prompt(
         self,
-        key: str,
         default_prompt: Type[Prompt],
         default_values: Optional[dict] = None,
-        df=None,
     ) -> tuple[Prompt, dict]:
         if default_values is None:
             default_values = {}
-
-        # prompt builtins are available to all prompts preceded by $
-        # e.g. $df.head(), $df.shape, $df.columns, etc.
-        prompt_builtins = {
-            "df": df,
-        }
-
-        prompt = self._non_default_prompts.get(key)
-
-        if prompt and isinstance(prompt, type):
-            prompt = prompt(**default_values)
-
-        if prompt:
-            """Override all the variables with _ prefix with default variable values"""
-            for var in prompt._args:
-                if var[0] == "_" and var[1:] in default_values:
-                    prompt.override_var(var, default_values[var[1:]])
-
-            """Replace all variables with $ prefix with evaluated values"""
-            prompt_text = prompt.text.split(" ")
-            for i in range(len(prompt_text)):
-                word = prompt_text[i]
-
-                if word.startswith("$"):
-                    prompt_text[i] = str(eval(word[1:], prompt_builtins))
-            prompt.text = " ".join(prompt_text)
-
-            return prompt, prompt._args
 
         return default_prompt(**default_values), default_values
 
     def run(
         self,
-        data_frame: Union[pd.DataFrame, List[pd.DataFrame]],
+        data_frame: pd.DataFrame,
         prompt: str,
         is_conversational_answer: bool = None,
         anonymize_df: bool = True,
         use_error_correction_framework: bool = True,
     ) -> Union[str, pd.DataFrame]:
         """
-        Run the PandasAI to make Dataframes Conversational.
+        Run the Misbah to make Dataframes Conversational.
 
         Args:
-            data_frame (Union[pd.DataFrame, List[pd.DataFrame]]): A pandas Dataframe
+            data_frame (pd.DataFrame): A pandas Dataframe
             prompt (str): A prompt to query about the Dataframe
             is_conversational_answer (bool): Whether to return answer in conversational
             form. Default to False
-            show_code (bool): To show the intermediate python code generated on the
-            prompt. Default to False
             anonymize_df (bool): Running the code with Sensitive Data. Default to True
             use_error_correction_framework (bool): Turn on Error Correction mechanism.
             Default to True
@@ -327,7 +270,7 @@ class PandasAI(Shortcuts):
         self._start_time = time.time()
 
         self.log(f"Question: {prompt}")
-        self.log(f"Running PandasAI with {self._llm.type} LLM...")
+        self.log(f"Running Misbah with {self._llm.type} LLM...")
 
         self._prompt_id = str(uuid.uuid4())
         self.log(f"Prompt ID: {self._prompt_id}")
@@ -338,62 +281,30 @@ class PandasAI(Shortcuts):
                 code = self._cache.get(prompt)
             else:
                 rows_to_display = 0 if self._enforce_privacy else 5
+                df_head = data_frame.head(rows_to_display)
+                if anonymize_df:
+                    df_head = anonymize_dataframe_head(df_head)
+                df_head = df_head.to_csv(index=False)
 
-                multiple: bool = isinstance(data_frame, list)
+                generate_code_default_values = {
+                    "df_head": df_head,
+                    "num_rows": data_frame.shape[0],
+                    "num_columns": data_frame.shape[1],
+                }
 
-                if multiple:
-                    heads = [
-                        anonymize_dataframe_head(dataframe.head(rows_to_display))
-                        if anonymize_df
-                        else dataframe.head(rows_to_display)
-                        for dataframe in data_frame
-                    ]
+                (
+                    generate_code_instruction,
+                    generate_code_instruction_values,
+                ) = self._get_prompt(
+                    GeneratePythonCodePrompt,
+                    default_values=generate_code_default_values,
+                )
 
-                    multiple_dataframes_default_values = {"dataframes": heads}
-                    (
-                        multiple_dataframes_instruction,
-                        multiple_dataframes_instruction_values,
-                    ) = self._get_prompt(
-                        "multiple_dataframes",
-                        default_prompt=MultipleDataframesPrompt,
-                        default_values=multiple_dataframes_default_values,
-                        df=data_frame,
-                    )
-
-                    code = self._llm.generate_code(
-                        multiple_dataframes_instruction,
-                        prompt,
-                    )
-
-                    self._original_instructions = multiple_dataframes_instruction_values
-
-                else:
-                    df_head = data_frame.head(rows_to_display)
-                    if anonymize_df:
-                        df_head = anonymize_dataframe_head(df_head)
-                    df_head = df_head.to_csv(index=False)
-
-                    generate_code_default_values = {
-                        "df_head": df_head,
-                        "num_rows": data_frame.shape[0],
-                        "num_columns": data_frame.shape[1],
-                    }
-
-                    (
-                        generate_code_instruction,
-                        generate_code_instruction_values,
-                    ) = self._get_prompt(
-                        "generate_python_code",
-                        GeneratePythonCodePrompt,
-                        default_values=generate_code_default_values,
-                        df=data_frame,
-                    )
-
-                    code = self._llm.generate_code(
-                        generate_code_instruction,
-                        prompt,
-                    )
-                    self._original_instructions = generate_code_instruction_values
+                code = self._llm.generate_code(
+                    generate_code_instruction,
+                    prompt,
+                )
+                self._original_instructions = generate_code_instruction_values
 
                 if self.callback:
                     self.callback.on_code(code)
@@ -426,7 +337,7 @@ class PandasAI(Shortcuts):
             if is_conversational_answer is None:
                 is_conversational_answer = self._is_conversational_answer
             if is_conversational_answer:
-                answer = self.conversational_answer(prompt, answer)
+                answer = self.conversational_answer(prompt, answer, code)
                 self.log(f"Conversational answer: {answer}")
 
             self.log(f"Executed in: {time.time() - self._start_time}s")
@@ -443,7 +354,7 @@ class PandasAI(Shortcuts):
 
     def add_middlewares(self, *middlewares: List[Middleware]):
         """
-        Add middlewares to PandasAI instance.
+        Add middlewares to Misbah instance.
 
         Args:
             *middlewares: A list of middlewares
@@ -453,7 +364,7 @@ class PandasAI(Shortcuts):
 
     def clear_cache(self):
         """
-        Clears the cache of the PandasAI instance.
+        Clears the cache of the Misbah instance.
         """
         if self._cache:
             self._cache.clear()
@@ -468,7 +379,7 @@ class PandasAI(Shortcuts):
         use_error_correction_framework: bool = True,
     ) -> Union[str, pd.DataFrame]:
         """
-        __call__ method of PandasAI class. It calls the `run` method.
+        __call__ method of Misbah class. It calls the `run` method.
 
         Args:
             data_frame:
@@ -512,7 +423,7 @@ class PandasAI(Shortcuts):
         if library == "pandas":
             return
 
-        if library in WHITELISTED_LIBRARIES + self._custom_whitelisted_dependencies:
+        if library in ALLOWED_PYTHON_LIBRARIES + self._custom_whitelisted_dependencies:
             for alias in node.names:
                 self._additional_dependencies.append(
                     {
@@ -652,50 +563,31 @@ class PandasAI(Shortcuts):
             },
         }
 
-    def _retry_run_code(self, code: str, e: Exception, multiple: bool = False):
+    def _retry_run_code(self, code: str, e: Exception):
         """
         A method to retry the code execution with error correction framework.
 
         Args:
             code (str): A python code
             e (Exception): An exception
-            multiple (bool): A boolean to indicate if the code is for multiple
-                             dataframes
 
         Returns (str): A python code
         """
 
-        if multiple:
-            correct_multiple_dataframes_error_default_values = {
-                "code": code,
-                "error_returned": e,
-                "question": self._original_instructions["question"],
-                "df_head": self._original_instructions["df_head"],
-            }
+    
+        correct_error_default_values = {
+            "code": code,
+            "error_returned": e,
+            "question": self._original_instructions["question"],
+            "df_head": self._original_instructions["df_head"],
+            "num_rows": self._original_instructions["num_rows"],
+            "num_columns": self._original_instructions["num_columns"],
+        }
 
-            error_correcting_instruction, _ = self._get_prompt(
-                "correct_multiple_dataframes_error",
-                CorrectMultipleDataframesErrorPrompt,
-                default_values=correct_multiple_dataframes_error_default_values,
-                df=self._original_instructions["df_head"],
-            )
-
-        else:
-            correct_error_default_values = {
-                "code": code,
-                "error_returned": e,
-                "question": self._original_instructions["question"],
-                "df_head": self._original_instructions["df_head"],
-                "num_rows": self._original_instructions["num_rows"],
-                "num_columns": self._original_instructions["num_columns"],
-            }
-
-            error_correcting_instruction, _ = self._get_prompt(
-                "correct_error",
-                CorrectErrorPrompt,
-                correct_error_default_values,
-                df=self._original_instructions["df_head"],
-            )
+        error_correcting_instruction, _ = self._get_prompt(
+            CorrectErrorPrompt,
+            correct_error_default_values,
+        )
 
         code = self._llm.generate_code(error_correcting_instruction, "")
         if self.callback:
@@ -731,7 +623,6 @@ class PandasAI(Shortcuts):
         code: str,
         environment: dict,
         use_error_correction_framework: bool = True,
-        multiple: bool = False,
     ) -> str:
         """
         Handle error occurred during first executing of code.
@@ -751,8 +642,6 @@ class PandasAI(Shortcuts):
             use_error_correction_framework (bool): If error correction
                                                    framework should be used.
                                                    Defaults to True.
-            multiple (bool): If the context has multiple dataframes.
-                             Defaults to False.
 
         Raises:
             Exception: Any exception which has been caught during
@@ -770,7 +659,7 @@ class PandasAI(Shortcuts):
                 if search_name_res := re.search(name_ptrn, exc.args[0]):
                     name_to_be_imported = search_name_res.group(1)
 
-            if name_to_be_imported and name_to_be_imported in WHITELISTED_LIBRARIES:
+            if name_to_be_imported and name_to_be_imported in ALLOWED_PYTHON_LIBRARIES:
                 try:
                     package = __import__(name_to_be_imported)
                     environment[name_to_be_imported] = package
@@ -797,7 +686,7 @@ class PandasAI(Shortcuts):
             raise exc
 
         for retry_num in range(self._max_retries):
-            code = self._retry_run_code(code, exc, multiple)
+            code = self._retry_run_code(code, exc)
             caught_error = self._execute_catching_errors(code, environment)
 
             if caught_error is None:
@@ -839,7 +728,7 @@ class PandasAI(Shortcuts):
 
         """
 
-        multiple: bool = isinstance(data_frame, list)
+        
 
         # Add save chart code
         if self._save_charts:
@@ -859,13 +748,7 @@ Code running:
         )
 
         environment: dict = self._get_environment()
-
-        if multiple:
-            environment.update(
-                {f"df{i}": dataframe for i, dataframe in enumerate(data_frame, start=1)}
-            )
-        else:
-            environment["df"] = data_frame
+        environment["df"] = data_frame
 
         # Redirect standard output to a StringIO buffer
         with redirect_stdout(io.StringIO()) as output:
@@ -876,7 +759,6 @@ Code running:
                     code_to_run,
                     environment,
                     use_error_correction_framework=use_error_correction_framework,
-                    multiple=multiple,
                 )
 
         captured_output = output.getvalue().strip()
@@ -925,14 +807,14 @@ Code running:
         return self._logs
 
     def process_id(self) -> str:
-        """Return the id of this PandasAI object."""
+        """Return the id of this Misbah object."""
         return self._process_id
 
     @property
     def last_prompt_id(self) -> str:
         """Return the id of the last prompt that was run."""
         if self._prompt_id is None:
-            raise ValueError("Pandas AI has not been run yet.")
+            raise ValueError("Misbah AI has not been run yet.")
         return self._prompt_id
 
     @property

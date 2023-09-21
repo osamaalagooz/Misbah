@@ -1,5 +1,5 @@
 """
-Constants used in the pandasai package.
+Constants used in the Misbah Project.
 It includes Start & End Code tags, Whitelisted Python Packages and
 While List Builtin Methods.
 """
@@ -73,7 +73,7 @@ WHITELISTED_BUILTINS = [
 ]
 
 # List of Python packages that are whitelisted for import in generated code
-WHITELISTED_LIBRARIES = [
+ALLOWED_PYTHON_LIBRARIES = [
     "sklearn",
     "statsmodels",
     "seaborn",

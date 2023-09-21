@@ -1,0 +1,119 @@
+2023-09-21 17:14:27 [INFO] Question: How many merchants do you have
+2023-09-21 17:14:27 [INFO] Running PandasAI with openai LLM...
+2023-09-21 17:14:27 [INFO] Prompt ID: 315c267b-22f8-4533-b295-ca354e2b5588
+2023-09-21 17:14:29 [INFO] 
+                        Code generated:
+                        ```
+                        num_merchants = len(merchants_df)
+num_merchants
+                        ```
+                    
+2023-09-21 17:14:29 [INFO] 
+Code running:
+```
+num_merchants = len(merchants_df)
+num_merchants
+```
+2023-09-21 17:14:29 [WARNING] Error of executing code
+2023-09-21 17:15:09 [INFO] Question: How many merchants do you have
+2023-09-21 17:15:09 [INFO] Running PandasAI with openai LLM...
+2023-09-21 17:15:09 [INFO] Prompt ID: 826bec68-3e1c-4c26-befc-7ad17175518f
+2023-09-21 17:15:11 [INFO] 
+                        Code generated:
+                        ```
+                        num_merchants = len(df)
+num_merchants
+                        ```
+                    
+2023-09-21 17:15:11 [INFO] 
+Code running:
+```
+num_merchants = len(df)
+num_merchants
+```
+2023-09-21 17:15:11 [INFO] Answer: 238
+2023-09-21 17:15:13 [INFO] Conversational answer: We currently have 238 merchants. This means that we have a total of 238 businesses or individuals who are selling their products or services through our platform.
+2023-09-21 17:15:13 [INFO] Executed in: 4.1954827308654785s
+2023-09-21 17:15:35 [INFO] Question: What is the top mcc
+2023-09-21 17:15:35 [INFO] Running PandasAI with openai LLM...
+2023-09-21 17:15:35 [INFO] Prompt ID: 5e604543-4df4-4620-be58-4307c1137a6d
+2023-09-21 17:15:37 [INFO] 
+                        Code generated:
+                        ```
+                        top_mcc = df['Sales Mcc'].value_counts().idxmax()
+top_mcc
+                        ```
+                    
+2023-09-21 17:15:37 [INFO] 
+Code running:
+```
+top_mcc = df['Sales Mcc'].value_counts().idxmax()
+top_mcc
+```
+2023-09-21 17:15:37 [INFO] Answer: ملابس
+2023-09-21 17:15:41 [INFO] Conversational answer: The top MCC, or Merchant Category Code, is "ملابس" which translates to "clothing" in English. This means that the most popular category for merchants is clothing. This could include various types of clothing such as shirts, pants, dresses, and more.
+2023-09-21 17:15:41 [INFO] Executed in: 5.978715181350708s
+2023-09-21 17:52:01 [INFO] Question: How many merchants do you have
+2023-09-21 17:52:01 [INFO] Running Misbah with openai LLM...
+2023-09-21 17:52:01 [INFO] Prompt ID: 9bd91319-1f0b-45ee-a747-004052cb79bf
+2023-09-21 17:52:03 [INFO] 
+                        Code generated:
+                        ```
+                        num_merchants = len(df)
+num_merchants
+                        ```
+                    
+2023-09-21 17:52:03 [INFO] 
+Code running:
+```
+num_merchants = len(df)
+num_merchants
+```
+2023-09-21 17:52:03 [INFO] Answer: 238
+2023-09-21 17:52:07 [INFO] Conversational answer: We currently have 238 merchants. This means that we have a total of 238 businesses or individuals who are selling their products or services through our platform.
+2023-09-21 17:52:07 [INFO] Executed in: 5.95860481262207s
+2023-09-21 17:54:33 [INFO] Question: Plot a histogram of merchants for each governet
+2023-09-21 17:54:33 [INFO] Running Misbah with openai LLM...
+2023-09-21 17:54:33 [INFO] Prompt ID: 7c0105f9-3bc1-463d-8c42-8a8e4114fcef
+2023-09-21 17:54:38 [INFO] 
+                        Code generated:
+                        ```
+                        import pandas as pd
+import matplotlib.pyplot as plt
+
+# Read the dataframe
+df = pd.read_csv('data.csv')
+
+# Plot histogram of merchants for each governorate
+df['Governorate'].value_counts().plot(kind='bar')
+
+# Set labels and title
+plt.xlabel('Governorate')
+plt.ylabel('Number of Merchants')
+plt.title('Histogram of Merchants for Each Governorate')
+
+# Show the plot
+plt.show()
+                        ```
+                    
+2023-09-21 17:54:38 [INFO] Charts saving to: ./imags/exports/charts/7c0105f9-3bc1-463d-8c42-8a8e4114fcef
+2023-09-21 17:54:38 [INFO] 
+Code running:
+```
+df['Governorate'].value_counts().plot(kind='bar')
+plt.xlabel('Governorate')
+plt.ylabel('Number of Merchants')
+plt.title('Histogram of Merchants for Each Governorate')
+plt.savefig('./imags/exports/charts/7c0105f9-3bc1-463d-8c42-8a8e4114fcef/chart.png')
+plt.show()
+plt.close('all')
+```
+2023-09-21 17:54:38 [INFO] Answer: None
+2023-09-21 17:54:48 [INFO] Conversational answer: Sure! Unfortunately, I cannot plot a histogram for you as I am a text-based AI and do not have the capability to generate visualizations. However, I can provide you with a summarized explanation of how you can create a histogram of merchants for each government.
+
+To plot a histogram of merchants for each government, you would need a dataset that includes information about the merchants and the government they belong to. Each row in the dataset would represent a merchant and include a column indicating the government they are associated with.
+
+Once you have the dataset, you can use a programming language or a data analysis tool like Python with libraries such as Matplotlib or Seaborn to create the histogram. You would need to group the data by government and count the number of merchants in each group. Then, you can plot the histogram with the governments on the x-axis and the count of merchants on the y-axis.
+
+By visualizing the histogram, you can easily compare the number of merchants across different governments and identify any patterns or disparities.
+2023-09-21 17:54:48 [INFO] Executed in: 15.403558492660522s

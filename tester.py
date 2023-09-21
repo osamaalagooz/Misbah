@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
-from core_ai import PandasAI
+from core_ai import Misbah
 from core_ai.llm.openai import OpenAI
 from langchain.chat_models import ChatOpenAI
-from core_ai.middlewares import StreamlitMiddleware
 from PIL import Image
 
 df = pd.DataFrame({
@@ -16,8 +15,8 @@ df = pd.DataFrame({
 OPENAI_API_KEY = "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"
 llm = OpenAI(api_token=OPENAI_API_KEY, streaming=True)
 
-pandas_ai = PandasAI(llm,verbose=True, save_charts=True, save_charts_path="./images")
-res = pandas_ai.run(df, prompt="What are the 5 happiest countries", show_code=True)
-image_path = f"/images/exports/charts/{pandas_ai._prompt_id}/chart.png"
+misbah_ai = Misbah(llm,verbose=True, save_charts=True, save_charts_path="./images")
+res = misbah_ai.run(df, prompt="What are the 5 happiest countries")
+image_path = f"/images/exports/charts/{misbah_ai._prompt_id}/chart.png"
 
 print(res)

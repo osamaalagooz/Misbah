@@ -17,6 +17,7 @@ class GenerateResponsePrompt(Prompt):
     text: str = """
 Question: {question}
 Answer: {answer}
+Generated Code : {code}
 
-Rewrite the answer to the question in a conversational way and add a summerized explanation for the answer.
+Rewrite the answer to the question in a conversational way and add a summerized explanation for the answer depending on the generated code.
 """

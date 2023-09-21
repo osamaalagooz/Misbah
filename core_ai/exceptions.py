@@ -1,4 +1,4 @@
-"""PandasAI's custom exceptions.
+"""Misbah's custom exceptions.
 
 This module contains the implementation of Custom Exceptions.
 

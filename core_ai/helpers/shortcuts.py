@@ -7,7 +7,7 @@ class Shortcuts(ABC):
     @abstractmethod
     def run(self, df: pd.DataFrame, prompt: str) -> Union[str, pd.DataFrame]:
         """
-        Run method from PandasAI class.
+        Run method from Misbah class.
 
         Args:
             df (pd.DataFrame): The DataFrame containing the data.

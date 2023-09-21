@@ -1,7 +1,7 @@
 """
 Charts Middleware class
 
-Middleware to handle the charts in PandasAI.
+Middleware to handle the charts in Misbah.
 """
 
 from core_ai.middlewares.base import Middleware
@@ -23,7 +23,7 @@ class ChartsMiddleware(Middleware):
 
     def run(self, code: str) -> str:
         """
-        Run the middleware to remove issues with displaying charts in PandasAI.
+        Run the middleware to remove issues with displaying charts in Misbah.
 
         Returns:
             str: Modified code

@@ -1,7 +1,7 @@
 """ Base class to implement a new LLM
 
 This module is the base class to integrate the various LLMs API. This module also
-includes the Base LLM classes for OpenAI, HuggingFace and Google PaLM.
+includes the Base LLM classe for OpenAI
 
 Example:
 
@@ -14,14 +14,12 @@ Example:
     ```
 """
 
-import os
 import ast
 import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
 import openai
-import requests
 
 from ..constants import END_CODE_TAG, START_CODE_TAG
 from ..exceptions import (
@@ -29,7 +27,6 @@ from ..exceptions import (
     MethodNotImplementedError,
     NoCodeFoundError,
 )
-from ..helpers._optional import import_dependency
 from ..helpers.openai_info import openai_callback_var
 from ..prompts.base import Prompt
 
@@ -39,12 +36,12 @@ class LLM:
 
     last_prompt: Optional[str] = None
 
-    def is_pandasai_llm(self) -> bool:
+    def is_Misbah_llm(self) -> bool:
         """
         Return True if the LLM is from core_ai.
 
         Returns:
-            bool: True if the LLM is from pandasAI
+            bool: True if the LLM is from Misbah
         """
         return True
 
@@ -265,210 +262,3 @@ class BaseOpenAI(LLM, ABC):
         return response["choices"][0]["message"]["content"]
 
 
-class HuggingFaceLLM(LLM):
-    """Base class to implement a new Hugging Face LLM.
-
-    LLM base class is extended to be used with HuggingFace LLM Modes APIs
-
-    """
-
-    last_prompt: Optional[str] = None
-    api_token: str
-    _api_url: str = "https://api-inference.huggingface.co/models/"
-    _max_retries: int = 3
-
-    @property
-    def type(self) -> str:
-        return "huggingface-llm"
-
-    def _setup(self, **kwargs):
-        """
-        Setup the HuggingFace LLM
-        Args:
-            **kwargs: ["api_token", "max_retries"]
-        """
-        self.api_token = (
-            kwargs.get("api_token") or os.getenv("HUGGINGFACE_API_KEY") or None
-        )
-        if self.api_token is None:
-            raise APIKeyNotFoundError("HuggingFace Hub API key is required")
-
-        # Since the huggingface API only returns few tokens at a time, we need to
-        # call the API multiple times to get all the tokens. This is the maximum
-        # number of retries we will do.
-        if kwargs.get("max_retries"):
-            self._max_retries = kwargs.get("max_retries")
-
-    def __init__(self, **kwargs):
-        """
-        __init__ method of HuggingFaceLLM Class
-        Args:
-            **kwargs: ["api_token", "max_retries"]
-        """
-        self._setup(**kwargs)
-
-    def query(self, payload):
-        """
-        Query the HF API
-        Args:
-            payload: A JSON form payload
-
-        Returns: Generated Response
-
-        """
-
-        headers = {"Authorization": f"Bearer {self.api_token}"}
-
-        response = requests.post(
-            self._api_url, headers=headers, json=payload, timeout=60
-        )
-
-        return response.json()[0]["generated_text"]
-
-    def call(self, instruction: Prompt, value: str, suffix: str = "") -> str:
-        """
-        A call method of HuggingFaceLLM class.
-        Args:
-            instruction (object): A prompt object
-            value (str):
-            suffix (str):
-
-        Returns (str): A string response
-
-        """
-
-        prompt = str(instruction)
-        payload = prompt + value + suffix
-
-        # sometimes the API doesn't return a valid response, so we retry passing the
-        # output generated from the previous call as the input
-        for _i in range(self._max_retries):
-            response = self.query({"inputs": payload})
-            payload = response
-            if response.count("<endCode>") >= 2:
-                break
-
-        # replace instruction + value from the inputs to avoid showing it in the output
-        output = response.replace(prompt + value + suffix, "")
-        ans = ""
-        for line in output.split("\n"):
-            if line.find("utput:") != -1:
-                break
-            if ans == "":
-                ans = ans + line
-            else:
-                ans = ans + "\n" + line
-        if len(ans.split("'''")) > 0:
-            ans = ans.split("'''")[0]
-        output = ans
-        return output
-
-
-class BaseGoogle(LLM):
-    """Base class to implement a new Google LLM
-
-    LLM base class is extended to be used with Google Palm API.
-    """
-
-    genai: Any
-    temperature: Optional[float] = 0
-    top_p: Optional[float] = 0.8
-    top_k: Optional[float] = 0.3
-    max_output_tokens: Optional[int] = 1000
-
-    def _configure(self, api_key: str):
-        """
-        Configure Google Palm API Key
-        Args:
-            api_key (str): A string of API keys generated from Google Cloud
-
-        Returns:
-
-        """
-
-        if not api_key:
-            raise APIKeyNotFoundError("Google Palm API key is required")
-
-        err_msg = "Install google-generativeai >= 0.1 for Google Palm API"
-        genai = import_dependency("google.generativeai", extra=err_msg)
-
-        genai.configure(api_key=api_key)
-        self.genai = genai
-
-    def _configurevertexai(self, project_id: str, location: str):
-        """
-        Configure Google VertexAi
-        Args:
-            project_id: GCP Project
-            location: Location of Project
-
-        Returns: Vertexai Object
-
-        """
-
-        err_msg = "Install google-cloud-aiplatform for Google Vertexai"
-        vertexai = import_dependency("vertexai", extra=err_msg)
-        vertexai.init(project=project_id, location=location)
-        self.vertexai = vertexai
-
-    def _valid_params(self):
-        return ["temperature", "top_p", "top_k", "max_output_tokens"]
-
-    def _set_params(self, **kwargs):
-        """
-        Set Parameters
-        Args:
-            **kwargs: ["temperature", "top_p", "top_k", "max_output_tokens"]
-
-        Returns:
-
-        """
-
-        valid_params = self._valid_params()
-        for key, value in kwargs.items():
-            if key in valid_params:
-                setattr(self, key, value)
-
-    def _validate(self):
-        """Validates the parameters for Google"""
-
-        if self.temperature is not None and not 0 <= self.temperature <= 1:
-            raise ValueError("temperature must be in the range [0.0, 1.0]")
-
-        if self.top_p is not None and not 0 <= self.top_p <= 1:
-            raise ValueError("top_p must be in the range [0.0, 1.0]")
-
-        if self.top_k is not None and not 0 <= self.top_k <= 1:
-            raise ValueError("top_k must be in the range [0.0, 1.0]")
-
-        if self.max_output_tokens is not None and self.max_output_tokens <= 0:
-            raise ValueError("max_output_tokens must be greater than zero")
-
-    @abstractmethod
-    def _generate_text(self, prompt: str) -> str:
-        """
-        Generates text for prompt, specific to implementation.
-
-        Args:
-            prompt (str): Prompt
-
-        Returns:
-            str: LLM response
-        """
-        raise MethodNotImplementedError("method has not been implemented")
-
-    def call(self, instruction: Prompt, value: str, suffix: str = "") -> str:
-        """
-        Call the Google LLM.
-
-        Args:
-            instruction (object): Instruction to pass
-            value (str): Value to pass
-            suffix (str): Suffix to pass
-
-        Returns:
-            str: Response
-        """
-        self.last_prompt = str(instruction) + value
-        prompt = str(instruction) + value + suffix
-        return self._generate_text(prompt)
