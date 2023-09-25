@@ -1,15 +1,15 @@
 """
-Charts Middleware class
+Charts OutputParser class
 
-Middleware to handle the charts in Misbah.
+OutputParser to handle the charts in Misbah.
 """
 
-from core_ai.middlewares.base import Middleware
+from core_ai.output_parsers.base import OutputParser
 import sys
 
 
-class ChartsMiddleware(Middleware):
-    """Charts Middleware class"""
+class ChartsOutputParser(OutputParser):
+    """Charts OutputParser class"""
 
     def _is_running_in_console(self) -> bool:
         """
@@ -23,7 +23,7 @@ class ChartsMiddleware(Middleware):
 
     def run(self, code: str) -> str:
         """
-        Run the middleware to remove issues with displaying charts in Misbah.
+        Run the OutputParser to remove issues with displaying charts in Misbah.
 
         Returns:
             str: Modified code

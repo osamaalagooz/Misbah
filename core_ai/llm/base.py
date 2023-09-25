@@ -27,8 +27,8 @@ from ..exceptions import (
     MethodNotImplementedError,
     NoCodeFoundError,
 )
-from ..helpers.openai_info import openai_callback_var
-from ..prompts.base import Prompt
+from ..utilities.openai_info import openai_callback_var
+from ..prompt_templates.base import Prompt
 
 
 class LLM:

@@ -3,7 +3,7 @@ import pandas as pd
 from abc import ABC, abstractmethod
 
 
-class Shortcuts(ABC):
+class MisbahBase(ABC):
     @abstractmethod
     def run(self, df: pd.DataFrame, prompt: str) -> Union[str, pd.DataFrame]:
         """

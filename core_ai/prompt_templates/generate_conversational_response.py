@@ -11,7 +11,7 @@ Rewrite the answer to the question in a conversational way.
 from .base import Prompt
 
 
-class GenerateResponsePrompt(Prompt):
+class ConversationalResponsePrompt(Prompt):
     """Prompt to generate the response to the question in a conversational way"""
 
     text: str = """

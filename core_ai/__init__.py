@@ -24,23 +24,23 @@ from .constants import (
     ALLOWED_PYTHON_LIBRARIES,
 )
 from .exceptions import BadImportError, LLMNotFoundError
-from .helpers._optional import import_dependency
-from .helpers.anonymizer import anonymize_dataframe_head
-from .helpers.cache import Cache
-from .helpers.save_chart import add_save_chart
-from .helpers.shortcuts import Shortcuts
-from .helpers.path import find_closest
+from .utilities._optional import import_dependency
+from .utilities.anonymizer import anonymize_dataframe_head
+from .utilities.cache import Cache
+from .utilities.save_chart import add_save_chart
+from .base import MisbahBase
+from .utilities.path import find_closest
 from .llm.base import LLM
-from .middlewares.base import Middleware
-from .middlewares.charts import ChartsMiddleware
-from .prompts.base import Prompt
-from .prompts.correct_error_prompt import CorrectErrorPrompt
-from .prompts.generate_python_code import GeneratePythonCodePrompt
-from .prompts.generate_response import GenerateResponsePrompt
+from .output_parsers.base import OutputParser
+from .output_parsers.charts_output import ChartsOutputParser
+from .prompt_templates.base import Prompt
+from .prompt_templates.correct_error_prompt import CorrectErrorPrompt
+from .prompt_templates.generate_python_code import GeneratePythonCodePrompt
+from .prompt_templates.generate_conversational_response import ConversationalResponsePrompt
 from .callbacks.base import BaseCallback
 
 
-class Misbah(Shortcuts):
+class Misbah(MisbahBase):
     """
     Misbah is a wrapper around a LLM to make dataframes conversational.
 
@@ -71,8 +71,8 @@ class Misbah(Shortcuts):
         to None
         _logs (List[dict], optional): List of logs to be stored. Default to []
         _prompt_id (str, optional): Unique ID to differentiate calls. Default to None
-        _middlewares (List[Middleware], optional): List of middlewares to run. Default
-        to [ChartsMiddleware()]
+        _OutputParsers (List[OutputParser], optional): List of OutputParsers to run. Default
+        to [ChartsOutputParser()]
         _additional_dependencies (List[dict], optional): List of additional dependencies
         to be added. Default to []
         _custom_whitelisted_dependencies (List[str], optional): List of custom
@@ -104,7 +104,7 @@ class Misbah(Shortcuts):
     _cache: Cache = None
     _enable_cache: bool = True
     _prompt_id: Optional[str] = None
-    _middlewares: List[Middleware] = [ChartsMiddleware()]
+    _OutputParsers: List[OutputParser] = [ChartsOutputParser()]
     _additional_dependencies: List[dict] = []
     _custom_whitelisted_dependencies: List[str] = []
     _start_time: float = 0
@@ -125,7 +125,7 @@ class Misbah(Shortcuts):
         save_charts=False,
         save_charts_path=None,
         enable_cache=True,
-        middlewares=None,
+        OutputParsers=None,
         custom_whitelisted_dependencies=None,
         enable_logging=True,
         callback: Optional[BaseCallback] = None,
@@ -146,7 +146,7 @@ class Misbah(Shortcuts):
             Default to False
             enable_cache (bool): Enable the cache to store the results.
             Default to True
-            middlewares (list): List of middlewares to be used. Default to None
+            OutputParsers (list): List of OutputParsers to be used. Default to None
             custom_whitelisted_dependencies (list): List of custom dependencies to
             be used. Default to None
             enable_logging (bool): Enable the logging. Default to True
@@ -193,8 +193,8 @@ class Misbah(Shortcuts):
         if self._enable_cache:
             self._cache = Cache()
 
-        if middlewares is not None:
-            self.add_middlewares(*middlewares)
+        if OutputParsers is not None:
+            self.add_OutputParsers(*OutputParsers)
 
         if custom_whitelisted_dependencies is not None:
             self._custom_whitelisted_dependencies = custom_whitelisted_dependencies
@@ -227,7 +227,7 @@ class Misbah(Shortcuts):
 
         default_values = {"question": question, "answer": answer, "code": code}
         generate_response_instruction, _ = self._get_prompt(
-            default_prompt=GenerateResponsePrompt,
+            default_prompt=ConversationalResponsePrompt,
             default_values=default_values,
         )
 
@@ -323,8 +323,8 @@ class Misbah(Shortcuts):
                     self._cache.set(prompt, code)
 
 
-            for middleware in self._middlewares:
-                code = middleware(code)
+            for OutputParser in self._OutputParsers:
+                code = OutputParser(code)
 
             answer = self.run_code(
                 code,
@@ -352,15 +352,15 @@ class Misbah(Shortcuts):
                 f"\n{exception}\n"
             )
 
-    def add_middlewares(self, *middlewares: List[Middleware]):
+    def add_OutputParsers(self, *OutputParsers: List[OutputParser]):
         """
-        Add middlewares to Misbah instance.
+        Add OutputParsers to Misbah instance.
 
         Args:
-            *middlewares: A list of middlewares
+            *OutputParsers: A list of OutputParsers
 
         """
-        self._middlewares.extend(middlewares)
+        self._OutputParsers.extend(OutputParsers)
 
     def clear_cache(self):
         """

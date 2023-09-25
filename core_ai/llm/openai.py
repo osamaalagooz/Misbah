@@ -12,10 +12,10 @@ import os
 from typing import Any, Dict, Optional
 
 import openai
-from ..helpers import load_dotenv
+from ..utilities import load_dotenv
 
 from ..exceptions import APIKeyNotFoundError, UnsupportedOpenAIModelError
-from ..prompts.base import Prompt
+from ..prompt_templates.base import Prompt
 from .base import BaseOpenAI
 
 load_dotenv()

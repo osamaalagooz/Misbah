@@ -1,12 +1,12 @@
 from .base import Prompt
 from .correct_error_prompt import CorrectErrorPrompt
 from .generate_python_code import GeneratePythonCodePrompt
-from .generate_response import GenerateResponsePrompt
+from .generate_conversational_response import ConversationalResponsePrompt
 
 __all__ = [
     "Prompt",
     "CorrectErrorPrompt",
-    "GenerateResponsePrompt",
+    "ConversationalResponsePrompt",
     "GeneratePythonCodePrompt",
    
 ]
